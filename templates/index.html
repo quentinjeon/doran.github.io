@@ -1,0 +1,77 @@
+<!-- templates/index.html -->
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>음성 인식을 통한 유튜브 노래 재생</title>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            margin-top: 50px;
+        }
+        button {
+            padding: 15px 30px;
+            font-size: 16px;
+            cursor: pointer;
+        }
+        #message {
+            margin-top: 20px;
+            font-size: 18px;
+            color: green;
+        }
+        iframe {
+            width: 640px;
+            height: 360px;
+            margin-top: 30px;
+            border: none;
+        }
+    </style>
+</head>
+<body>
+    <h1>음성 인식을 통한 유튜브 노래 재생</h1>
+    <button id="recordButton">녹음 시작</button>
+    <div id="message">여기에 메시지가 표시됩니다.</div>
+    
+    <!-- 유튜브 재생을 위한 iframe -->
+    <iframe id="youtubePlayer" src="" allowfullscreen></iframe>
+
+    <script>
+        $(document).ready(function () {
+            $("#recordButton").click(function () {
+                $("#message").text("음성 인식 중...");
+
+                // Flask 서버에 음성 인식 요청
+                $.post("/recognize", function (data) {
+                    if (data.song_info) {
+                        $("#message").text(`인식된 텍스트: ${data.song_info}`);
+
+                        // 유튜브 노래 검색 및 연속 재생 요청
+                        $.ajax({
+                            url: "/play",
+                            type: "POST",
+                            contentType: "application/json",
+                            data: JSON.stringify({ song_info: data.song_info }),
+                            success: function (response) {
+                                if (response.video_urls) {
+                                    // 첫 번째 유튜브 URL을 받아서 iframe src 속성에 삽입하고 autoplay 파라미터 추가
+                                    const firstVideoUrl = response.video_urls[0].replace("watch?v=", "embed/") + "?autoplay=1";
+                                    $("#youtubePlayer").attr("src", firstVideoUrl);
+                                    $("#message").text("유튜브에서 노래를 연속 재생합니다.");
+                                } else {
+                                    $("#message").text(response.error);
+                                    $("#youtubePlayer").attr("src", "");  // 재생 중지
+                                }
+                            }
+                        });
+                    } else {
+                        $("#message").text(data.error);
+                    }
+                });
+            });
+        });
+    </script>
+</body>
+</html>
